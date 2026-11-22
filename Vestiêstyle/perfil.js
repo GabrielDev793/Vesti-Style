@@ -1,3 +1,6 @@
+(function () {
+'use strict';
+
 // ==================================
 // VESTIÊ STILE - PERFIL
 // ==================================
@@ -100,7 +103,7 @@ try {
     localStorage.getItem('vestiePerfil') || 'null'
   );
 
-  if (dadosSalvos) {
+  if (dadosSalvos && typeof dadosSalvos === 'object' && !Array.isArray(dadosSalvos)) {
     dadosPerfil = { ...dadosPerfil, ...dadosSalvos };
   }
 } catch (erro) {
@@ -108,14 +111,14 @@ try {
 }
 
 function atualizarPerfil() {
-  nomeUsuario.textContent = dadosPerfil.nome;
+  nomeUsuario.textContent = dadosPerfil.nome || 'apollo';
   bioUsuario.textContent = dadosPerfil.bio;
 
   editarNome.value = dadosPerfil.nome;
   editarBio.value = dadosPerfil.bio;
 
-  fotoUsuario.src = dadosPerfil.foto;
-  previewFoto.src = dadosPerfil.foto;
+  fotoUsuario.src = dadosPerfil.foto || 'imagens/foto-perfil.jpg';
+  previewFoto.src = dadosPerfil.foto || 'imagens/foto-perfil.jpg';
 }
 
 function salvarPerfil() {
@@ -130,6 +133,9 @@ function salvarPerfil() {
     return false;
   }
 }
+
+// Preenche nome, bio e foto imediatamente
+atualizarPerfil();
 
 // ==================================
 // EDITAR NOME E BIOGRAFIA
@@ -167,32 +173,70 @@ document.getElementById('nova-foto')
 
     if (!arquivo) return;
 
-    if (!arquivo.type.startsWith('image/')) {
+    if (arquivo.type && !arquivo.type.startsWith('image/')) {
       alert('Selecione uma imagem válida.');
       return;
     }
 
-    if (arquivo.size > 2 * 1024 * 1024) {
-      alert('Escolha uma imagem de até 2 MB.');
+    // Fotos de celular costumam ter vários MB e estouram o localStorage.
+    // Por isso a imagem é reduzida e comprimida antes de salvar.
+    aplicarFoto(arquivo).finally(() => { evento.target.value = ''; });
+  });
+
+// Reduz a imagem (lado maior = max px) e devolve um JPEG em base64
+function reduzirImagem(arquivo, max, qualidade) {
+  return new Promise((resolve, reject) => {
+    const url = URL.createObjectURL(arquivo);
+    const img = new Image();
+
+    img.onload = () => {
+      const escala = Math.min(1, max / Math.max(img.width, img.height));
+      const canvas = document.createElement('canvas');
+      canvas.width = Math.round(img.width * escala);
+      canvas.height = Math.round(img.height * escala);
+      canvas.getContext('2d').drawImage(img, 0, 0, canvas.width, canvas.height);
+      URL.revokeObjectURL(url);
+      resolve(canvas.toDataURL('image/jpeg', qualidade));
+    };
+
+    img.onerror = () => {
+      URL.revokeObjectURL(url);
+      reject(new Error('imagem inválida'));
+    };
+
+    img.src = url;
+  });
+}
+
+// Reduz, salva e mostra a foto. Se o armazenamento estiver apertado,
+// tenta de novo com versões menores.
+async function aplicarFoto(arquivo) {
+  const tentativas = [[500, 0.8], [320, 0.7], [200, 0.6]];
+
+  for (const [max, qualidade] of tentativas) {
+    let foto;
+
+    try {
+      foto = await reduzirImagem(arquivo, max, qualidade);
+    } catch (erro) {
+      alert('Não foi possível carregar essa imagem.');
       return;
     }
 
-    const leitor = new FileReader();
+    const anterior = dadosPerfil.foto;
+    dadosPerfil.foto = foto;
 
-    leitor.onload = () => {
-      const fotoAnterior = dadosPerfil.foto;
+    try {
+      localStorage.setItem('vestiePerfil', JSON.stringify(dadosPerfil));
+      atualizarPerfil();
+      return;
+    } catch (erro) {
+      dadosPerfil.foto = anterior;
+    }
+  }
 
-      dadosPerfil.foto = leitor.result;
-
-      if (salvarPerfil()) {
-        atualizarPerfil();
-      } else {
-        dadosPerfil.foto = fotoAnterior;
-      }
-    };
-
-    leitor.readAsDataURL(arquivo);
-  });
+  alert('Não foi possível salvar a foto: o armazenamento do navegador está cheio.');
+}
 
 // ==================================
 // LOOKS SALVOS
@@ -381,7 +425,13 @@ try {
     localStorage.getItem('vestiePreferencias') || 'null'
   );
 
-  if (armazenadas) preferencias = armazenadas;
+  if (armazenadas && typeof armazenadas === 'object') {
+    preferencias = {
+      ...armazenadas,
+      estilos: Array.isArray(armazenadas.estilos) ? armazenadas.estilos : [],
+      cores: Array.isArray(armazenadas.cores) ? armazenadas.cores : []
+    };
+  }
 } catch {
   console.warn('Preferências não disponíveis.');
 }
@@ -452,7 +502,7 @@ function carregarHistorico() {
   const grade=document.getElementById('grade-historico');
   if(!grade)return;
   grade.replaceChildren();
-  const lista=Vestie.historico();
+  const lista=(window.Vestie&&Vestie.historico)?Vestie.historico():[];
   for(const look of lista){
     const card=document.createElement('article');card.className='look-salvo';
     const img=document.createElement('img');img.alt=look.titulo||'Look criado';img.src=Object.values(look.pecas||{})[0]?.imagem||'assets/sem-imagem.svg';
@@ -473,10 +523,21 @@ const carregarLooksSalvosOriginal=carregarLooksSalvos;
 carregarLooksSalvos=function(){carregarLooksSalvosOriginal();carregarHistorico();};
 carregarHistorico();
 // câmera frontal e fallback pela galeria
-const cameraPerfil=document.getElementById('nova-foto-camera');
+// o input da câmera não existia no HTML; agora é criado aqui
+let cameraPerfil=document.getElementById('nova-foto-camera');
+if(!cameraPerfil){
+  cameraPerfil=document.createElement('input');
+  cameraPerfil.type='file';cameraPerfil.accept='image/*';cameraPerfil.setAttribute('capture','user');cameraPerfil.hidden=true;
+  document.body.appendChild(cameraPerfil);
+}
 document.getElementById('foto-camera')?.addEventListener('click',()=>cameraPerfil.click());
-cameraPerfil?.addEventListener('change',async e=>{const file=e.target.files?.[0];if(!file)return;try{const foto=await Vestie.imagemArquivo(file);const anterior=dadosPerfil.foto;dadosPerfil.foto=foto;if(salvarPerfil())atualizarPerfil();else dadosPerfil.foto=anterior;}catch(err){alert(err.message);}});
+cameraPerfil.addEventListener('change',e=>{
+  const file=e.target.files?.[0];if(!file)return;
+  aplicarFoto(file).finally(()=>{e.target.value='';});
+});
 // fotos pela galeria também são otimizadas para evitar exceder o espaço local
 const galeriaPerfil=document.getElementById('nova-foto');
 // listener original permanece como fallback.
 if(new URLSearchParams(location.search).get('salvos')==='1')mostrarPagina('pagina-salvos');
+
+})();
