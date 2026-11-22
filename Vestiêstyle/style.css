@@ -2020,7 +2020,7 @@ button {
 .btn-voltar2 {
   width: 35px;
   margin-top: 1px;
-  margin-left: 20px;
+  margin-left: 1px;
 }
 .config-topo {
   border: none;
@@ -2031,7 +2031,7 @@ button {
 .btn-config1 {
    width: 40px;
   height: 40px; 
-  margin-left: 350px;
+  margin-left: 320px;
 }
 .btn-config {
   width: 40px;
