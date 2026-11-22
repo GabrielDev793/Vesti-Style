@@ -1,12 +1,59 @@
 (function () {
 'use strict';
 
+// ---- VERSÃO / DIAGNÓSTICO (abra perfil.html?debug=1 para ver) ----
+const VERSAO = 'perfil.js v5';
+const errosPagina = [];
+window.addEventListener('error', e => errosPagina.push(e.message));
+
+// Busca elemento por id; se não existir, devolve um elemento solto para
+// o script não quebrar inteiro por causa de um detalhe do HTML.
+function $(id) {
+  return document.getElementById(id) || document.createElement('div');
+}
+
+function mostrarDiagnostico() {
+  if (new URLSearchParams(location.search).get('debug') !== '1') return;
+
+  const caixa = document.createElement('div');
+  caixa.style.cssText =
+    'position:fixed;top:0;left:0;right:0;z-index:99999;padding:8px;' +
+    'background:#111;color:#7CFC00;font:12px monospace;' +
+    'white-space:pre-wrap;max-height:45vh;overflow:auto';
+
+  const uso = [];
+  try {
+    for (let i = 0; i < localStorage.length; i++) {
+      const k = localStorage.key(i);
+      uso.push(k + ': ' + Math.round((localStorage.getItem(k) || '').length / 1024) + ' KB');
+    }
+  } catch (e) {
+    uso.push('localStorage bloqueado: ' + e.message);
+  }
+
+  caixa.textContent =
+    VERSAO + ' carregado\nErros: ' +
+    (errosPagina.join(' | ') || 'nenhum') + '\n' + (uso.join('\n') || '(localStorage vazio)') + '\n';
+
+  const limpar = document.createElement('button');
+  limpar.textContent = 'Limpar dados do app e recarregar';
+  limpar.style.cssText = 'margin-top:6px;padding:8px;font:12px sans-serif';
+  limpar.addEventListener('click', () => {
+    try { localStorage.clear(); } catch (e) {}
+    location.reload();
+  });
+  caixa.appendChild(limpar);
+  document.body.appendChild(caixa);
+}
+window.addEventListener('load', () => setTimeout(mostrarDiagnostico, 0));
+
+
 // ==================================
 // VESTIÊ STILE - PERFIL
 // ==================================
 
 const paginas = document.querySelectorAll('.pagina');
-const tituloPagina = document.getElementById('titulo-pagina');
+const tituloPagina = $('titulo-pagina');
 
 let paginaAtual = 'pagina-perfil';
 
@@ -34,7 +81,7 @@ function mostrarPagina(id) {
   // e o "Meu estilo" nunca era atualizado.
   if (tituloPagina) tituloPagina.textContent = titulos[id] || '';
 
-  document.getElementById('btn-config-topo').style.visibility =
+  $('btn-config-topo').style.visibility =
     id === 'pagina-perfil' ? 'visible' : 'hidden';
 
   carregarLooksSalvos();
@@ -49,22 +96,22 @@ document.querySelectorAll('[data-pagina]').forEach(botao => {
   });
 });
 
-document.getElementById('btn-config-topo')
+$('btn-config-topo')
   .addEventListener('click', () => {
     mostrarPagina('pagina-configuracoes');
   });
 
-document.getElementById('editar-perfil')
+$('editar-perfil')
   .addEventListener('click', () => {
     mostrarPagina('pagina-editar');
   });
 
-document.getElementById('atalho-salvos')
+$('atalho-salvos')
   .addEventListener('click', () => {
     mostrarPagina('pagina-salvos');
   });
 
-document.querySelector('.voltar')
+(document.querySelector('.voltar') || document.createElement('a'))
   .addEventListener('click', evento => {
     if (paginaAtual !== 'pagina-perfil') {
       evento.preventDefault();
@@ -74,7 +121,7 @@ document.querySelector('.voltar')
 
 // Contadores demonstrativos
 ['btn-seguidores', 'btn-seguindo'].forEach(id => {
-  document.getElementById(id).addEventListener('click', () => {
+  $(id).addEventListener('click', () => {
     alert('A lista de usuários estará disponível futuramente.');
   });
 });
@@ -83,14 +130,14 @@ document.querySelector('.voltar')
 // DADOS DO PERFIL
 // ==================================
 
-const nomeUsuario = document.getElementById('nome-usuario');
-const bioUsuario = document.getElementById('bio-usuario');
+const nomeUsuario = $('nome-usuario');
+const bioUsuario = $('bio-usuario');
 
-const editarNome = document.getElementById('editar-nome');
-const editarBio = document.getElementById('editar-bio');
+const editarNome = $('editar-nome');
+const editarBio = $('editar-bio');
 
-const fotoUsuario = document.getElementById('foto-usuario');
-const previewFoto = document.getElementById('preview-foto');
+const fotoUsuario = $('foto-usuario');
+const previewFoto = $('preview-foto');
 
 let dadosPerfil = {
   nome: 'apollo',
@@ -141,7 +188,7 @@ atualizarPerfil();
 // EDITAR NOME E BIOGRAFIA
 // ==================================
 
-document.getElementById('form-editar')
+$('form-editar')
   .addEventListener('submit', evento => {
     evento.preventDefault();
 
@@ -166,7 +213,7 @@ document.getElementById('form-editar')
 // ALTERAR FOTO
 // ==================================
 
-document.getElementById('nova-foto')
+$('nova-foto')
   .addEventListener('change', evento => {
 
     const arquivo = evento.target.files[0];
@@ -276,11 +323,11 @@ function obterLooksSalvos() {
 function carregarLooksSalvos() {
   const salvos = obterLooksSalvos();
 
-  const grade = document.getElementById('grade-salvos');
-  const vazio = document.getElementById('salvos-vazio');
+  const grade = $('grade-salvos');
+  const vazio = $('salvos-vazio');
 
   // Mostra a quantidade real de looks salvos
-  document.getElementById('numero-looks').textContent =
+  $('numero-looks').textContent =
     salvos.length;
 
   grade.innerHTML = '';
@@ -369,9 +416,9 @@ function carregarMeuEstilo() {
 
   const estilo = estilos[estiloSalvo];
 
-  const nome = document.getElementById('nome-estilo');
-  const imagem = document.getElementById('imagem-estilo');
-  const descricao = document.getElementById('descricao-estilo');
+  const nome = $('nome-estilo');
+  const imagem = $('imagem-estilo');
+  const descricao = $('descricao-estilo');
 
   // Elementos do cartão de estilo exibido no perfil principal.
   const textoCartao = document.querySelector('.estilo-info p');
@@ -460,7 +507,7 @@ document.querySelectorAll('.cor-preferencia').forEach(botao => {
   });
 });
 
-document.getElementById('salvar-preferencias')
+$('salvar-preferencias')
   .addEventListener('click', () => {
 
     preferencias.estilos = [
@@ -499,7 +546,7 @@ mostrarPagina('pagina-perfil');
 // HISTÓRICO DE LOOKS GERADOS LOCALMENTE
 // ==================================
 function carregarHistorico() {
-  const grade=document.getElementById('grade-historico');
+  const grade=$('grade-historico');
   if(!grade)return;
   grade.replaceChildren();
   const lista=(window.Vestie&&Vestie.historico)?Vestie.historico():[];
@@ -516,27 +563,27 @@ function carregarHistorico() {
     acoes.append(reabrir,favorito,excluir);info.append(titulo,data,acoes);card.append(img,info);grade.append(card);
   }
   if(!lista.length){const p=document.createElement('p');p.textContent='Você ainda não criou looks. Comece na aba Montar.';p.className='descricao-secao';grade.append(p);}
-  const numero=document.getElementById('numero-looks');numero.textContent=lista.length+obterLooksSalvos().length;
-  document.getElementById('salvos-vazio').style.display=lista.length||obterLooksSalvos().length?'none':'block';
+  const numero=$('numero-looks');numero.textContent=lista.length+obterLooksSalvos().length;
+  $('salvos-vazio').style.display=lista.length||obterLooksSalvos().length?'none':'block';
 }
 const carregarLooksSalvosOriginal=carregarLooksSalvos;
 carregarLooksSalvos=function(){carregarLooksSalvosOriginal();carregarHistorico();};
 carregarHistorico();
 // câmera frontal e fallback pela galeria
 // o input da câmera não existia no HTML; agora é criado aqui
-let cameraPerfil=document.getElementById('nova-foto-camera');
+let cameraPerfil=$('nova-foto-camera');
 if(!cameraPerfil){
   cameraPerfil=document.createElement('input');
   cameraPerfil.type='file';cameraPerfil.accept='image/*';cameraPerfil.setAttribute('capture','user');cameraPerfil.hidden=true;
   document.body.appendChild(cameraPerfil);
 }
-document.getElementById('foto-camera')?.addEventListener('click',()=>cameraPerfil.click());
+$('foto-camera')?.addEventListener('click',()=>cameraPerfil.click());
 cameraPerfil.addEventListener('change',e=>{
   const file=e.target.files?.[0];if(!file)return;
   aplicarFoto(file).finally(()=>{e.target.value='';});
 });
 // fotos pela galeria também são otimizadas para evitar exceder o espaço local
-const galeriaPerfil=document.getElementById('nova-foto');
+const galeriaPerfil=$('nova-foto');
 // listener original permanece como fallback.
 if(new URLSearchParams(location.search).get('salvos')==='1')mostrarPagina('pagina-salvos');
 
