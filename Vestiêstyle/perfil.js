@@ -1,4 +1,3 @@
-
 // ==================================
 // VESTIÊ STILE - PERFIL
 // ==================================
@@ -28,7 +27,9 @@ function mostrarPagina(id) {
     'pagina-configuracoes': 'Configurações'
   };
 
-  tituloPagina.textContent = titulos[id] || '';
+  // O título não existe no HTML; sem esta verificação o script quebrava aqui
+  // e o "Meu estilo" nunca era atualizado.
+  if (tituloPagina) tituloPagina.textContent = titulos[id] || '';
 
   document.getElementById('btn-config-topo').style.visibility =
     id === 'pagina-perfil' ? 'visible' : 'hidden';
@@ -362,6 +363,9 @@ function carregarMeuEstilo() {
     if (textoCartao) textoCartao.textContent = 'Seu estilo: Não definido';
   }
 }
+
+// Atualiza o estilo ao voltar para a página (ex.: botão voltar do navegador)
+window.addEventListener('pageshow', carregarMeuEstilo);
 
 // ==================================
 // PREFERÊNCIAS
