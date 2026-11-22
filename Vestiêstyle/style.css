@@ -2019,7 +2019,7 @@ button {
 }
 .btn-voltar2 {
   width: 35px;
-  margin-top: 6px;
+  margin-top: 1px;
   margin-left: 1px;
 }
 .config-topo {
@@ -2031,7 +2031,7 @@ button {
 .btn-config1 {
    width: 40px;
   height: 40px; 
-  margin-left: 323px;
+  margin-left: 320px;
 }
 .btn-config {
   width: 40px;
@@ -3286,4 +3286,23 @@ p {
 .resultado-gerador.resultado-casual-masculino h3 {
   font-size: 21px;
   font-weight: 600;
+}
+
+
+/* =========================================================
+   CORREÇÃO: faixa bege no topo das telas do app (celular).
+   - o body não centraliza mais o app na vertical;
+   - no celular, o fundo atrás do app passa a ter a mesma cor
+     dele, então qualquer folga no topo/rodapé fica invisível.
+   ========================================================= */
+body {
+  align-items: flex-start;
+  min-height: 100dvh;
+}
+
+@media (max-width: 480px) {
+  html,
+  body:has(> .app, > .explorar-app, > .perfil-app) {
+    background: #fffaf3;
+  }
 }
